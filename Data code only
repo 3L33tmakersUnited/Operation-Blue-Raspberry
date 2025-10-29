@@ -1,0 +1,22 @@
+from gpiozero import MCP3008
+import time
+
+# Create an MCP3008 object using channel 0 
+gas_sensor = MCP3008(channel=0)
+
+# Wait for the sensor to heat up before reading (approx. 1 minute)
+print("waiting for detector to warm up. . .")
+time.sleep(60)
+print("Warmup completed. . . Reading sensor data")
+
+while True:
+    # Read the analog voltage level from the sensor
+    # The value property returns a number between 0.0 and 1.0
+    reading = gas_sensor.value
+
+    # Scale the value for better readability (0 to 1023 for 10-bit ADC)
+    scaled_reading = reading * 1023
+
+    print(f"Sensor reading (scaled): {scaled_reading:.2f}")
+    print(f"Sensor reading (raw 0-1.0): {reading:.4f}")
+    time.sleep(1)
