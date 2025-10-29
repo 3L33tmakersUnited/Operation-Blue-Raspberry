@@ -1,10 +1,11 @@
 from gpiozero import MCP3008
 import time
+from datetime import datetime
 from openai import OpenAI
 from twilio.rest import Client
 
 # ==== MACHINE IDENTIFICATION ====
-MACHINE_NAME = "LabSensor-01"   # <-- change this on each individual raspberry Pi
+MACHINE_NAME = "LabSensor-01"   # <-- change this on each Pi
 
 # ==== OPENAI SETUP ====
 client = OpenAI()
@@ -47,6 +48,9 @@ print(f"[{MACHINE_NAME}] Baseline established at {baseline:.4f}")
 
 # ==== MAIN LOOP ====
 while True:
+    # Current timestamp (e.g., 10-28-2025 at 14:35.22)
+    timestamp = datetime.now().strftime("%m-%d-%Y at %H:%M.%S")
+
     reading = gas_sensor.value
     scaled_reading = reading * 1023
     deviation = (reading - baseline) / baseline * 100
@@ -54,6 +58,7 @@ while True:
     # Build message for AI analysis
     sensor_message = (
         f"Machine: {MACHINE_NAME}\n"
+        f"Time: {timestamp}\n"
         f"Gas sensor reading (scaled): {scaled_reading:.2f}\n"
         f"Gas sensor reading (raw): {reading:.4f}\n"
         f"Deviation from baseline: {deviation:.2f}%"
@@ -76,6 +81,7 @@ while True:
         analysis = response.choices[0].message.content
         print("\n--- New Measurement ---")
         print(f"Machine: {MACHINE_NAME}")
+        print(f"Time: {timestamp}")
         print("AI analysis:", analysis)
 
     except Exception as e:
@@ -85,7 +91,7 @@ while True:
     # ==== ALERT HANDLING ====
     if deviation > 30:
         alert_message = (
-            f"⚠️ ALERT from {MACHINE_NAME}: "
+            f"⚠️ ALERT from {MACHINE_NAME} at {timestamp}: "
             f"Significant increase detected ({deviation:.2f}% over baseline)!"
         )
         print(alert_message)
