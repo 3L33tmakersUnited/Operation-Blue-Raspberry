@@ -2,9 +2,11 @@ from gpiozero import MCP3008
 import time
 from datetime import datetime
 from openai import OpenAI
-from twilio.rest import Client
 import csv
 import os
+import requests
+import base64
+import json
 
 # ==== MACHINE IDENTIFICATION ====
 MACHINE_NAME = "LabSensor-01"   # Change this for each Pi
@@ -12,22 +14,40 @@ MACHINE_NAME = "LabSensor-01"   # Change this for each Pi
 # ==== OPENAI SETUP ====
 client = OpenAI()
 
-# ==== TWILIO SETUP ====
-TWILIO_SID = "YOUR_TWILIO_SID"
-TWILIO_AUTH_TOKEN = "YOUR_TWILIO_AUTH_TOKEN"
-TWILIO_FROM = "+1XXXXXXXXXX"    # Your Twilio number
-TWILIO_TO = "+1YYYYYYYYYY"      # Your phone number for alerts
+# ==== CLICKSEND SETUP ====
+# Create an API key in ClickSend, then use:
+#   username = your ClickSend login username (email)
+#   api_key  = your ClickSend API key (NOT your password)
+CLICKSEND_USERNAME = "YOUR_CLICKSEND_USERNAME"
+CLICKSEND_API_KEY  = "YOUR_CLICKSEND_API_KEY"
+CLICKSEND_FROM     = "+18777804236"   # Registered/allowed sender ID (or a validated number)
+CLICKSEND_TO       = "+19495505587"   # Destination number for alerts
 
-twilio_client = Client(TWILIO_SID, TWILIO_AUTH_TOKEN)
+CLICKSEND_SMS_URL = "https://rest.clicksend.com/v3/sms/send"
 
-def send_sms(message):
+def send_sms(message: str):
+    """
+    Send an SMS via ClickSend REST API.
+    """
     try:
-        twilio_client.messages.create(
-            body=message,
-            from_=TWILIO_FROM,
-            to=TWILIO_TO
-        )
-        print(f"📱 SMS sent: {message}")
+        auth_str = f"{CLICKSEND_USERNAME}:{CLICKSEND_API_KEY}"
+        headers = {
+            "Authorization": "Basic " + base64.b64encode(auth_str.encode()).decode(),
+            "Content-Type": "application/json"
+        }
+        payload = {
+            "messages": [{
+                "source": "python",
+                "body": message,
+                "to": CLICKSEND_TO,
+                "from": CLICKSEND_FROM
+            }]
+        }
+        resp = requests.post(CLICKSEND_SMS_URL, headers=headers, data=json.dumps(payload), timeout=15)
+        if resp.status_code >= 200 and resp.status_code < 300:
+            print(f"📱 SMS sent: {message}")
+        else:
+            print(f"Error sending SMS (HTTP {resp.status_code}): {resp.text}")
     except Exception as e:
         print("Error sending SMS:", e)
 
